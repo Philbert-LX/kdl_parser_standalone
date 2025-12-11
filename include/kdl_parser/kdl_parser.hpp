@@ -32,6 +32,7 @@
 #define KDL_PARSER__KDL_PARSER_HPP_
 
 #include <string>
+#include <map>
 
 #include "kdl/tree.hpp"
 #include "urdf_model/model.h"
@@ -69,6 +70,43 @@ bool treeFromString(const std::string & xml, KDL::Tree & tree);
  */
 KDL_PARSER_PUBLIC
 bool treeFromUrdfModel(const urdf::ModelInterface & robot_model, KDL::Tree & tree);
+
+/** Constructs a KDL tree from a file, given the file name, with UUID/InnerId mapping support
+ * \param file The filename from where to read the xml
+ * \param link_uuid_map Output map where keys are link names and values are uuid
+ *                      The map will be populated with extracted UUIDs from the URDF file
+ * \param joint_innerid_map Output map where keys are joint names and values are innerId
+ *                          The map will be populated with extracted innerIds from the URDF file
+ * \param tree The resulting KDL Tree
+ * returns true on success, false on failure
+ */
+KDL_PARSER_PUBLIC
+bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
+
+/** Constructs a KDL tree from a string containing xml, with UUID/InnerId mapping support
+ * \param xml A string containting the xml description of the robot
+ * \param link_uuid_map Output map where keys are link names and values are uuid
+ *                      The map will be populated with extracted UUIDs from the URDF XML
+ * \param joint_innerid_map Output map where keys are joint names and values are innerId
+ *                          The map will be populated with extracted innerIds from the URDF XML
+ * \param tree The resulting KDL Tree
+ * returns true on success, false on failure
+ */
+KDL_PARSER_PUBLIC
+bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
+
+/** Constructs a KDL tree from a URDF robot model, with UUID/InnerId mapping support
+ * \param robot_model The URDF robot model
+ * \param xml The original XML string (required to extract uuid/innerId since ModelInterface doesn't contain them)
+ * \param link_uuid_map Output map where keys are link names and values are uuid
+ *                      The map will be populated with extracted UUIDs from the URDF XML
+ * \param joint_innerid_map Output map where keys are joint names and values are innerId
+ *                          The map will be populated with extracted innerIds from the URDF XML
+ * \param tree The resulting KDL Tree
+ * returns true on success, false on failure
+ */
+KDL_PARSER_PUBLIC
+bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
 }  // namespace kdl_parser
 
 #endif  // KDL_PARSER__KDL_PARSER_HPP_

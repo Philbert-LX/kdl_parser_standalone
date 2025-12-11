@@ -36,6 +36,8 @@
 #include <fstream>
 #include <sstream>
 #include <cstdio>  // for fprintf
+#include <map>
+#include <regex>
 #include "kdl/frames_io.hpp"
 #include <urdf_model/model.h>
 #include <urdf_parser/urdf_parser.h>
@@ -195,6 +197,111 @@ bool treeFromUrdfModel(const urdf::ModelInterface & robot_model, KDL::Tree & tre
   }
 
   return true;
+}
+
+// Helper function to extract uuid and innerId from XML string
+void extractIdsFromXml(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map)
+{
+  link_uuid_map.clear();
+  joint_innerid_map.clear();
+  
+  // Extract link uuids: find all <link> tags and extract name and uuid attributes
+  // Pattern: <link ... name="..." ... uuid="..." ...> or <link ... uuid="..." ... name="..." ...>
+  std::regex link_tag_regex(R"(<link\s+([^>]+)>)");
+  std::sregex_iterator link_iter(xml.begin(), xml.end(), link_tag_regex);
+  std::sregex_iterator link_end;
+  
+  for (; link_iter != link_end; ++link_iter) {
+    std::string attributes = link_iter->str(1);
+    std::string name, uuid;
+    
+    // Extract name attribute
+    std::regex name_regex(R"(name\s*=\s*["']([^"']+)["'])");
+    std::smatch name_match;
+    if (std::regex_search(attributes, name_match, name_regex)) {
+      name = name_match[1].str();
+    }
+    
+    // Extract uuid attribute
+    std::regex uuid_regex(R"(uuid\s*=\s*["']([^"']+)["'])");
+    std::smatch uuid_match;
+    if (std::regex_search(attributes, uuid_match, uuid_regex)) {
+      uuid = uuid_match[1].str();
+    }
+    
+    if (!name.empty() && !uuid.empty()) {
+      link_uuid_map[name] = uuid;
+    }
+  }
+  
+  // Extract joint innerIds: find all <joint> tags and extract name and innerId attributes
+  std::regex joint_tag_regex(R"(<joint\s+([^>]+)>)");
+  std::sregex_iterator joint_iter(xml.begin(), xml.end(), joint_tag_regex);
+  std::sregex_iterator joint_end;
+  
+  for (; joint_iter != joint_end; ++joint_iter) {
+    std::string attributes = joint_iter->str(1);
+    std::string name, innerId;
+    
+    // Extract name attribute
+    std::regex name_regex(R"(name\s*=\s*["']([^"']+)["'])");
+    std::smatch name_match;
+    if (std::regex_search(attributes, name_match, name_regex)) {
+      name = name_match[1].str();
+    }
+    
+    // Extract innerId attribute
+    std::regex innerid_regex(R"(innerId\s*=\s*["']([^"']+)["'])");
+    std::smatch innerid_match;
+    if (std::regex_search(attributes, innerid_match, innerid_regex)) {
+      innerId = innerid_match[1].str();
+    }
+    
+    if (!name.empty() && !innerId.empty()) {
+      joint_innerid_map[name] = innerId;
+    }
+  }
+}
+
+bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+{
+  std::ifstream t(file);
+  if (!t.good()) {
+    fprintf(stderr, "[kdl_parser] Error: Could not open file '%s'.\n", file.c_str());
+    return false;
+  }
+  std::stringstream buffer;
+  buffer << t.rdbuf();
+  std::string xml_content = buffer.str();
+  
+  // Extract IDs from XML and populate the output maps
+  extractIdsFromXml(xml_content, link_uuid_map, joint_innerid_map);
+  
+  return treeFromString(xml_content, tree);
+}
+
+bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+{
+  // Extract IDs from XML and populate the output maps
+  extractIdsFromXml(xml, link_uuid_map, joint_innerid_map);
+  
+  urdf::ModelInterfaceSharedPtr robot_model = urdf::parseURDF(xml);
+  if (!robot_model) {
+    fprintf(stderr, "[kdl_parser] Error: Could not generate robot model.\n");
+    return false;
+  }
+  return treeFromUrdfModel(*robot_model, tree);
+}
+
+bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+{
+  // Extract IDs from XML and populate the output maps
+  // Note: urdf::ModelInterface doesn't contain uuid/innerId information,
+  // so we need the original XML string to extract them
+  extractIdsFromXml(xml, link_uuid_map, joint_innerid_map);
+  
+  // Use the standard function to build the tree
+  return treeFromUrdfModel(robot_model, tree);
 }
 
 }  // namespace kdl_parser
