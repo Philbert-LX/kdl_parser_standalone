@@ -38,6 +38,7 @@
 #include <cstdio>  // for fprintf
 #include <map>
 #include <regex>
+#include <functional>  // for std::function
 #include "kdl/frames_io.hpp"
 #include <urdf_model/model.h>
 #include <urdf_parser/urdf_parser.h>
@@ -263,7 +264,53 @@ void extractIdsFromXml(const std::string & xml, std::map<std::string, std::strin
   }
 }
 
-bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+// Helper function to extract joint limits from URDF model
+void extractJointLimitsFromModel(const urdf::ModelInterface & robot_model, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map)
+{
+  joint_limit_lower_map.clear();
+  joint_limit_upper_map.clear();
+  joint_limit_velocity_map.clear();
+  
+  // Iterate through all joints in the model
+  // urdf::ModelInterface typically has a joints_ member (std::map<std::string, urdf::JointSharedPtr>)
+  // We need to traverse the model to get all joints
+  // The standard way is to iterate through links and get their parent joints
+  
+  // Helper lambda to recursively collect joints from links
+  std::function<void(urdf::LinkConstSharedPtr)> collectJointsFromLink = 
+    [&](urdf::LinkConstSharedPtr link) {
+      if (!link) return;
+      
+      // Process the parent joint if it exists
+      if (link->parent_joint) {
+        urdf::JointSharedPtr joint = link->parent_joint;
+        std::string joint_name = joint->name;
+        
+        // Extract limits if they exist
+        if (joint->limits) {
+          joint_limit_lower_map[joint_name] = joint->limits->lower;
+          joint_limit_upper_map[joint_name] = joint->limits->upper;
+          joint_limit_velocity_map[joint_name] = joint->limits->velocity;
+        }
+      }
+      
+      // Recursively process child links
+      for (size_t i = 0; i < link->child_links.size(); i++) {
+        collectJointsFromLink(link->child_links[i]);
+      }
+    };
+  
+  // Start from root link
+  urdf::LinkConstSharedPtr root = robot_model.getRoot();
+  if (root) {
+    // Process all child links (root itself doesn't have a parent joint)
+    for (size_t i = 0; i < root->child_links.size(); i++) {
+      collectJointsFromLink(root->child_links[i]);
+    }
+  }
+}
+
+bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree)
 {
   std::ifstream t(file);
   if (!t.good()) {
@@ -277,10 +324,16 @@ bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::st
   // Extract IDs from XML and populate the output maps
   extractIdsFromXml(xml_content, link_uuid_map, joint_innerid_map);
   
+  // Parse URDF to get model for extracting joint limits
+  urdf::ModelInterfaceSharedPtr robot_model = urdf::parseURDF(xml_content);
+  if (robot_model) {
+    extractJointLimitsFromModel(*robot_model, joint_limit_lower_map, joint_limit_upper_map, joint_limit_velocity_map);
+  }
+  
   return treeFromString(xml_content, tree);
 }
 
-bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree)
 {
   // Extract IDs from XML and populate the output maps
   extractIdsFromXml(xml, link_uuid_map, joint_innerid_map);
@@ -290,15 +343,22 @@ bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::s
     fprintf(stderr, "[kdl_parser] Error: Could not generate robot model.\n");
     return false;
   }
+  
+  // Extract joint limits from the model
+  extractJointLimitsFromModel(*robot_model, joint_limit_lower_map, joint_limit_upper_map, joint_limit_velocity_map);
+  
   return treeFromUrdfModel(*robot_model, tree);
 }
 
-bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree)
+bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree)
 {
   // Extract IDs from XML and populate the output maps
   // Note: urdf::ModelInterface doesn't contain uuid/innerId information,
   // so we need the original XML string to extract them
   extractIdsFromXml(xml, link_uuid_map, joint_innerid_map);
+  
+  // Extract joint limits from the model
+  extractJointLimitsFromModel(robot_model, joint_limit_lower_map, joint_limit_upper_map, joint_limit_velocity_map);
   
   // Use the standard function to build the tree
   return treeFromUrdfModel(robot_model, tree);

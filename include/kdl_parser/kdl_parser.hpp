@@ -77,11 +77,17 @@ bool treeFromUrdfModel(const urdf::ModelInterface & robot_model, KDL::Tree & tre
  *                      The map will be populated with extracted UUIDs from the URDF file
  * \param joint_innerid_map Output map where keys are joint names and values are innerId
  *                          The map will be populated with extracted innerIds from the URDF file
+ * \param joint_limit_lower_map Output map where keys are joint names and values are lower limit values
+ *                              The map will be populated with extracted lower limits from the URDF file
+ * \param joint_limit_upper_map Output map where keys are joint names and values are upper limit values
+ *                              The map will be populated with extracted upper limits from the URDF file
+ * \param joint_limit_velocity_map Output map where keys are joint names and values are velocity limit values
+ *                                 The map will be populated with extracted velocity limits from the URDF file
  * \param tree The resulting KDL Tree
  * returns true on success, false on failure
  */
 KDL_PARSER_PUBLIC
-bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
+bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree);
 
 /** Constructs a KDL tree from a string containing xml, with UUID/InnerId mapping support
  * \param xml A string containting the xml description of the robot
@@ -89,11 +95,17 @@ bool treeFromFileWithIds(const std::string & file, std::map<std::string, std::st
  *                      The map will be populated with extracted UUIDs from the URDF XML
  * \param joint_innerid_map Output map where keys are joint names and values are innerId
  *                          The map will be populated with extracted innerIds from the URDF XML
+ * \param joint_limit_lower_map Output map where keys are joint names and values are lower limit values
+ *                              The map will be populated with extracted lower limits from the URDF XML
+ * \param joint_limit_upper_map Output map where keys are joint names and values are upper limit values
+ *                              The map will be populated with extracted upper limits from the URDF XML
+ * \param joint_limit_velocity_map Output map where keys are joint names and values are velocity limit values
+ *                                 The map will be populated with extracted velocity limits from the URDF XML
  * \param tree The resulting KDL Tree
  * returns true on success, false on failure
  */
 KDL_PARSER_PUBLIC
-bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
+bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree);
 
 /** Constructs a KDL tree from a URDF robot model, with UUID/InnerId mapping support
  * \param robot_model The URDF robot model
@@ -102,11 +114,17 @@ bool treeFromStringWithIds(const std::string & xml, std::map<std::string, std::s
  *                      The map will be populated with extracted UUIDs from the URDF XML
  * \param joint_innerid_map Output map where keys are joint names and values are innerId
  *                          The map will be populated with extracted innerIds from the URDF XML
+ * \param joint_limit_lower_map Output map where keys are joint names and values are lower limit values
+ *                              The map will be populated with extracted lower limits from the URDF model
+ * \param joint_limit_upper_map Output map where keys are joint names and values are upper limit values
+ *                              The map will be populated with extracted upper limits from the URDF model
+ * \param joint_limit_velocity_map Output map where keys are joint names and values are velocity limit values
+ *                                 The map will be populated with extracted velocity limits from the URDF model
  * \param tree The resulting KDL Tree
  * returns true on success, false on failure
  */
 KDL_PARSER_PUBLIC
-bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, KDL::Tree & tree);
+bool treeFromUrdfModelWithIds(const urdf::ModelInterface & robot_model, const std::string & xml, std::map<std::string, std::string> & link_uuid_map, std::map<std::string, std::string> & joint_innerid_map, std::map<std::string, double> & joint_limit_lower_map, std::map<std::string, double> & joint_limit_upper_map, std::map<std::string, double> & joint_limit_velocity_map, KDL::Tree & tree);
 }  // namespace kdl_parser
 
 #endif  // KDL_PARSER__KDL_PARSER_HPP_
